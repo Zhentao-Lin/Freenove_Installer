@@ -1,0 +1,9 @@
+[submodule "libraries/mpu6050"]
+	path = libraries/mpu6050
+	url = https://github.com/m-rtijn/mpu6050.git
+[submodule "libraries/utils"]
+	path = libraries/utils
+	url = https://github.com/Freenove/utils.git
+[submodule "libraries/rpi-ws281x-python"]
+	path = libraries/rpi-ws281x-python
+	url = https://github.com/rpi-ws281x/rpi-ws281x-python.git
