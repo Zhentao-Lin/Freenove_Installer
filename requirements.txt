@@ -1,0 +1,17 @@
+gpiod==2.2.0
+gpiozero==2.0.1
+lgpio==0.2.2.0
+numpy==2.2.4
+opencv-contrib-python-headless==4.13.0.92
+opencv-python-headless==4.13.0.92
+picamera2==0.3.32
+pigpio==1.78
+pillow==11.1.0
+pyinstaller==6.19.0
+pyinstaller-hooks-contrib==2026.3
+PyQt5==5.15.11
+PyQt5_sip==12.17.0
+pyserial==3.5
+rpi-hardware-pwm==0.2.2
+setuptools==78.1.1
+spidev==3.6
