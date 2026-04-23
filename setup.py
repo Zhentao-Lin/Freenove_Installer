@@ -794,8 +794,6 @@ class LibraryInstaller:
                 if self.get_raspberry_pi_version() == 5:
                     if self.camera_version and self.camera_port:
                         self.update_camera_config(self.camera_version, self.camera_port)
-                    else:
-                        pass
                 else:
                     if self.camera_version:
                         self.update_camera_config(self.camera_version)
@@ -803,18 +801,18 @@ class LibraryInstaller:
                         self.update_audio_function(False)
                 
                 if self.get_raspberry_pi_version() == 5:
-                    # Update submodules in repository
                     try:
+                        self.update_spi_function(False)
                         self.update_submodules(['utils'])
+                        self.install_utils()
                     except Exception as e:
                         print(f"Error running command: {e}")
-                    self.install_utils()
                 else:
                     try:
                         self.update_submodules(['rpi-ws281x-python'])
+                        self.install_rpi_ws281x()
                     except Exception as e:
                         print(f"Error running command: {e}")
-                    self.install_rpi_ws281x()
 
             elif self.kit_code == "FNK0043":
                 self.update_i2c_function(True)
@@ -831,13 +829,12 @@ class LibraryInstaller:
                 else:
                     self.update_spi_function(True)
 
-                if self.connector_version == "V1.0":
-                    try:
-                        self.update_submodules(['rpi-ws281x-python'])
-                    except Exception as e:
-                        print(f"Error running command: {e}")
+                try:
+                    self.update_submodules(['rpi-ws281x-python'])
                     self.install_rpi_ws281x()
-
+                except Exception as e:
+                    print(f"Error running command: {e}")
+                    
             elif self.kit_code == "FNK0050" or self.kit_code == "FNK0052":
                 self.update_i2c_function(True)
                 if self.get_raspberry_pi_version() == 5:
