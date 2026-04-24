@@ -793,9 +793,11 @@ class LibraryInstaller:
             if self.kit_code == "FNK0036": 
                 if self.get_raspberry_pi_version() == 5:
                     if self.camera_version and self.camera_port:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version, self.camera_port)
                 else:
                     if self.camera_version:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version)
                     if self.get_raspberry_pi_version() == 3:
                         self.update_audio_function(False)
@@ -818,9 +820,11 @@ class LibraryInstaller:
                 self.update_i2c_function(True)
                 if self.get_raspberry_pi_version() == 5:
                     if self.camera_version and self.camera_port:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version, self.camera_port)
                 else:
                     if self.camera_version:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version)
                     if self.get_raspberry_pi_version() == 3:
                         self.update_audio_function(False)
@@ -839,9 +843,11 @@ class LibraryInstaller:
                 self.update_i2c_function(True)
                 if self.get_raspberry_pi_version() == 5:
                     if self.camera_version and self.camera_port:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version, self.camera_port)
                 else:
                     if self.camera_version:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version)
                     if self.get_raspberry_pi_version() == 3:
                         self.update_audio_function(False)
@@ -850,24 +856,22 @@ class LibraryInstaller:
                 else:
                     self.update_spi_function(True)
 
-                if self.connector_version == "V1.0":
-                    try:
-                        self.update_submodules(['rpi-ws281x-python'])
-                    except Exception as e:
-                        print(f"Error running command: {e}")
-                    self.install_rpi_ws281x()
                 try:
                     self.update_submodules(['mpu6050'])
+                    self.update_submodules(['rpi-ws281x-python'])
                 except Exception as e:
                     print(f"Error running command: {e}") 
                 self.install_mpu6050()
+                self.install_rpi_ws281x()
 
             elif self.kit_code == "FNK0077":
                 if self.get_raspberry_pi_version() == 5:
                     if self.camera_version and self.camera_port:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version, self.camera_port)
                 else:
                     if self.camera_version:
+                        self.update_camera_auto_detect(False)
                         self.update_camera_config(self.camera_version)
                 if self.board_version == "V1.0":
                     self.update_spi_function(False)
