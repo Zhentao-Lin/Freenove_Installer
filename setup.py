@@ -8,7 +8,9 @@ import shutil
 import sys
 
 class LibraryInstaller:
-    def __init__(self):
+    def __init__(self, use_virtual_env=True):
+        self.use_virtual_env = use_virtual_env
+        self.env_path = None
         self.kit_code = None
         self.connector_version = None
         self.board_version = None
@@ -22,6 +24,30 @@ class LibraryInstaller:
             'camera_port': self.camera_port
         }
         self.debug_output_enabled = True
+
+    def create_env(self, env_name: str, system_site_packages: bool = True) -> bool:
+        try:
+            self.env_name = env_name
+            self.system_site_packages = system_site_packages
+            self.env_path = Path(env_name).resolve()
+
+            cmd = f"python -m venv {self.env_path}"
+            if self.system_site_packages:
+                cmd += " --system-site-packages"
+            
+            print(f"Creating virtual environment: {self.env_name}")
+            
+            success = self.run_command_with_output(cmd, self.debug_output_enabled)
+            
+            if success:
+                print(f"Virtual environment '{self.env_name}' created successfully")
+                return True
+            else:
+                print(f"Failed to create virtual environment")
+                return False
+        except Exception as e:
+            print(f"Error creating virtual environment: {e}")
+            return False
 
     def detect_platform(self):
         """
@@ -174,29 +200,26 @@ class LibraryInstaller:
             print(f"Failed to update submodules: {e}")
             return False
     
-    def create_env(self, env_name: str, system_site_packages: bool = True) -> bool:
-        try:
-            self.env_name = env_name
-            self.system_site_packages = system_site_packages
-            self.env_path = Path(env_name).resolve()
-
-            cmd = f"python -m venv {self.env_path}"
-            if self.system_site_packages:
-                cmd += " --system-site-packages"
-            
-            print(f"Creating virtual environment: {self.env_name}")
-            
-            success = self.run_command_with_output(cmd, self.debug_output_enabled)
-            
-            if success:
-                print(f"Virtual environment '{self.env_name}' created successfully")
-                return True
-            else:
-                print(f"Failed to create virtual environment")
-                return False
-        except Exception as e:
-            print(f"Error creating virtual environment: {e}")
-            return False
+    def get_pip_path(self) -> str:
+        """获取系统pip路径"""
+        # 尝试不同的pip路径
+        possible_paths = [
+            "pip3",
+            "pip",
+            "/usr/bin/pip3",
+            "/usr/local/bin/pip3"
+        ]
+        
+        for path in possible_paths:
+            try:
+                result = subprocess.run([path, "--version"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"Found pip at: {path}")
+                    return path
+            except FileNotFoundError:
+                continue
+        
+        raise Exception("Could not find pip in system")
     
     def get_fastest_mirror(self) -> str:
         china_mirrors = [
@@ -241,28 +264,31 @@ class LibraryInstaller:
         else:
             print("Using global mirror based on speed test")
             return global_mirrors[global_times.index(fastest_global_time)]
-    
+
     def install_requirements(self, requirements_file: Union[str, Path] = "requirements.txt", timeout: int = 300) -> bool:
         req_path = Path(requirements_file)
         if not req_path.exists():
             print(f"Requirements file '{requirements_file}' does not exist")
             return False
 
-        pip_path = self.env_path / "bin" / "pip"
-            
-        if not pip_path.exists():
-            print(f"Pip not found in virtual environment: {pip_path}")
-            return False
-
         try:
-            cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout}"
+            if self.use_virtual_env:
+                # 在虚拟环境中安装
+                pip_path = self.env_path / "bin" / "pip"
+                
+                if not pip_path.exists():
+                    print(f"Pip not found in virtual environment: {pip_path}")
+                    return False
+
+                cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout}"
+            else:
+                # 在系统环境中安装
+                pip_path = self.get_pip_path()
+                cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout} --break-system-packages"
             
             fastest_mirror = self.get_fastest_mirror()
             cmd += f" -i {fastest_mirror}"
             print(f"Using mirror: {fastest_mirror}")
-            
-            #print(f"Installing packages from {requirements_file} (timeout={timeout}s)")
-            #print(f"Command: {cmd}")
             
             success = self.run_command_with_output(cmd, self.debug_output_enabled)
             
@@ -281,79 +307,135 @@ class LibraryInstaller:
             return False
     
     def install_rpi_ws281x(self, target_folder_path: str = None) -> bool:
-        venv_path = Path(target_folder_path) if target_folder_path else self.env_path
+        if self.use_virtual_env:
+            # 在虚拟环境中安装
+            venv_path = Path(target_folder_path) if target_folder_path else self.env_path
 
-        try:
-            source_lib_dir = Path.cwd() / "libraries" / "rpi-ws281x-python"
-            dest_lib_dir = venv_path / "rpi-ws281x-python"
-            
-            if not source_lib_dir.exists():
-                print(f"Error: Source library directory does not exist: {source_lib_dir}")
-                return False
+            try:
+                source_lib_dir = Path.cwd() / "libraries" / "rpi-ws281x-python"
+                dest_lib_dir = venv_path / "rpi-ws281x-python"
                 
-            if dest_lib_dir.exists():
-                shutil.rmtree(dest_lib_dir) 
-            shutil.copytree(source_lib_dir, dest_lib_dir)
-            
-            install_dir = dest_lib_dir / "library"
-            if not install_dir.exists():
-                print(f"Error: Library directory does not exist: {install_dir}")
+                if not source_lib_dir.exists():
+                    print(f"Error: Source library directory does not exist: {source_lib_dir}")
+                    return False
+                    
+                if dest_lib_dir.exists():
+                    shutil.rmtree(dest_lib_dir) 
+                shutil.copytree(source_lib_dir, dest_lib_dir)
+                
+                install_dir = dest_lib_dir / "library"
+                if not install_dir.exists():
+                    print(f"Error: Library directory does not exist: {install_dir}")
+                    return False
+                python_executable = venv_path / "bin" / "python" if os.name != 'nt' else venv_path / "Scripts" / "python.exe"
+                if not python_executable.exists():
+                    print(f"Error: Cannot find Python executable in virtual environment: {python_executable}")
+                    return False
+                install_cmd = f"cd {install_dir} && {python_executable} setup.py install"
+                success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
+                
+                if success:
+                    print("rpi-ws281x-python installed successfully")
+                    return True
+                else:
+                    print(f"rpi-ws281x-python installation failed")
+                    return False
+            except Exception as e:
+                print(f"Error during rpi-ws281x-python installation: {e}")
                 return False
-            python_executable = venv_path / "bin" / "python" if os.name != 'nt' else venv_path / "Scripts" / "python.exe"
-            if not python_executable.exists():
-                print(f"Error: Cannot find Python executable in virtual environment: {python_executable}")
+        else:
+            # 在系统环境中安装
+            try:
+                source_lib_dir = Path.cwd() / "libraries" / "rpi-ws281x-python"
+                
+                if not source_lib_dir.exists():
+                    print(f"Error: Source library directory does not exist: {source_lib_dir}")
+                    return False
+                
+                install_dir = source_lib_dir / "library"
+                if not install_dir.exists():
+                    print(f"Error: Library directory does not exist: {install_dir}")
+                    return False
+                    
+                python_executable = sys.executable  # 使用当前Python执行器
+                install_cmd = f"cd {install_dir} && {python_executable} setup.py install"
+                success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
+                
+                if success:
+                    print("rpi-ws281x-python installed successfully")
+                    return True
+                else:
+                    print(f"rpi-ws281x-python installation failed")
+                    return False
+            except Exception as e:
+                print(f"Error during rpi-ws281x-python installation: {e}")
                 return False
-            install_cmd = f"cd {install_dir} && sudo {python_executable} setup.py install"
-            #print(f"Running installation command in {install_dir}: {install_cmd}")
-            success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
-            
-            if success:
-                print("rpi-ws281x-python installed successfully")
-                return True
-            else:
-                print(f"rpi-ws281x-python installation failed")
-                return False
-        except Exception as e:
-            print(f"Error during rpi-ws281x-python installation: {e}")
-            return False
     
     def install_mpu6050(self, target_folder_path: str = None) -> bool:
-        venv_path = Path(target_folder_path) if target_folder_path else self.env_path
+        if self.use_virtual_env:
+            # 在虚拟环境中安装
+            venv_path = Path(target_folder_path) if target_folder_path else self.env_path
 
-        try:
-            source_lib_dir = Path.cwd() / "libraries" / "mpu6050"
-            dest_lib_dir = venv_path / "mpu6050"
-            
-            if not source_lib_dir.exists():
-                print(f"Error: Source library directory does not exist: {source_lib_dir}")
-                return False
-            if dest_lib_dir.exists():
-                shutil.rmtree(dest_lib_dir) 
-            shutil.copytree(source_lib_dir, dest_lib_dir)
-            
-            install_dir = dest_lib_dir
-            if not install_dir.exists():
-                print(f"Error: Cannot find installation directory {install_dir}")
-                return False
+            try:
+                source_lib_dir = Path.cwd() / "libraries" / "mpu6050"
+                dest_lib_dir = venv_path / "mpu6050"
                 
-            python_executable = venv_path / "bin" / "python" if os.name != 'nt' else venv_path / "Scripts" / "python.exe"
-            if not python_executable.exists():
-                print(f"Error: Cannot find Python executable in virtual environment: {python_executable}")
-                return False
+                if not source_lib_dir.exists():
+                    print(f"Error: Source library directory does not exist: {source_lib_dir}")
+                    return False
+                if dest_lib_dir.exists():
+                    shutil.rmtree(dest_lib_dir) 
+                shutil.copytree(source_lib_dir, dest_lib_dir)
                 
-            install_cmd = f"cd {install_dir} && sudo {python_executable} setup.py install"
-            #print(f"Running installation command in {install_dir}: {install_cmd}")
-            success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
-            
-            if success:
-                print("mpu6050 installed successfully")
-                return True
-            else:
-                print(f"mpu6050 installation failed")
+                install_dir = dest_lib_dir
+                if not install_dir.exists():
+                    print(f"Error: Cannot find installation directory {install_dir}")
+                    return False
+                    
+                python_executable = venv_path / "bin" / "python" if os.name != 'nt' else venv_path / "Scripts" / "python.exe"
+                if not python_executable.exists():
+                    print(f"Error: Cannot find Python executable in virtual environment: {python_executable}")
+                    return False
+                    
+                install_cmd = f"cd {install_dir} && {python_executable} setup.py install"
+                success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
+                
+                if success:
+                    print("mpu6050 installed successfully")
+                    return True
+                else:
+                    print(f"mpu6050 installation failed")
+                    return False
+            except Exception as e:
+                print(f"Error during mpu6050 installation: {e}")
                 return False
-        except Exception as e:
-            print(f"Error during mpu6050 installation: {e}")
-            return False
+        else:
+            # 在系统环境中安装
+            try:
+                source_lib_dir = Path.cwd() / "libraries" / "mpu6050"
+                
+                if not source_lib_dir.exists():
+                    print(f"Error: Source library directory does not exist: {source_lib_dir}")
+                    return False
+                
+                install_dir = source_lib_dir
+                if not install_dir.exists():
+                    print(f"Error: Cannot find installation directory {install_dir}")
+                    return False
+                    
+                python_executable = sys.executable  # 使用当前Python执行器
+                install_cmd = f"cd {install_dir} && {python_executable} setup.py install"
+                success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
+                
+                if success:
+                    print("mpu6050 installed successfully")
+                    return True
+                else:
+                    print(f"mpu6050 installation failed")
+                    return False
+            except Exception as e:
+                print(f"Error during mpu6050 installation: {e}")
+                return False
     
     def install_utils_dependencies(self) -> bool:
         dependencies = [
@@ -380,47 +462,83 @@ class LibraryInstaller:
             return False
     
     def install_utils(self, target_folder_path: str = None) -> bool:
-        venv_path = Path(target_folder_path) if target_folder_path else self.env_path
+        if self.use_virtual_env:
+            # 在虚拟环境中安装
+            venv_path = Path(target_folder_path) if target_folder_path else self.env_path
 
-        try:
-            source_lib_dir = Path.cwd() / "libraries" / "utils"
-            dest_lib_dir = venv_path / "utils"
-            
-            if not source_lib_dir.exists():
-                print(f"Error: Source library directory does not exist: {source_lib_dir}")
-                return False
+            try:
+                source_lib_dir = Path.cwd() / "libraries" / "utils"
+                dest_lib_dir = venv_path / "utils"
                 
-            if dest_lib_dir.exists():
-                shutil.rmtree(dest_lib_dir) 
-            shutil.copytree(source_lib_dir, dest_lib_dir)
+                if not source_lib_dir.exists():
+                    print(f"Error: Source library directory does not exist: {source_lib_dir}")
+                    return False
+                    
+                if dest_lib_dir.exists():
+                    shutil.rmtree(dest_lib_dir) 
+                shutil.copytree(source_lib_dir, dest_lib_dir)
 
-            if not self.install_utils_dependencies():
-                print("Failed to install system dependencies, utils installation aborted")
-                return False
+                if not self.install_utils_dependencies():
+                    print("Failed to install system dependencies, utils installation aborted")
+                    return False
 
-            install_dir = dest_lib_dir / "piolib" / "examples"
-            if not install_dir.exists():
-                print(f"Error: Cannot find 'examples' directory at {install_dir}")
+                install_dir = dest_lib_dir / "piolib" / "examples"
+                if not install_dir.exists():
+                    print(f"Error: Cannot find 'examples' directory at {install_dir}")
+                    return False
+                cmake_cmd = f"cd {install_dir} && cmake -S . -B build"
+                if not self.run_command_with_output(cmake_cmd, self.debug_output_enabled):
+                    print(f"CMake configuration failed")
+                    return False
+                
+                build_dir = install_dir / "build"
+                make_cmd = f"cd {build_dir} && make install"
+                success = self.run_command_with_output(make_cmd, self.debug_output_enabled)
+                
+                if success:
+                    print("utils installed successfully")
+                    return True
+                else:
+                    print(f"utils installation failed")
+                    return False
+            except Exception as e:
+                print(f"Error during utils installation: {e}")
                 return False
-            cmake_cmd = f"cd {install_dir} && cmake -S . -B build"
-            if not self.run_command_with_output(cmake_cmd, self.debug_output_enabled):
-                print(f"CMake configuration failed")
+        else:
+            # 在系统环境中安装
+            try:
+                source_lib_dir = Path.cwd() / "libraries" / "utils"
+                
+                if not source_lib_dir.exists():
+                    print(f"Error: Source library directory does not exist: {source_lib_dir}")
+                    return False
+
+                if not self.install_utils_dependencies():
+                    print("Failed to install system dependencies, utils installation aborted")
+                    return False
+
+                install_dir = source_lib_dir / "piolib" / "examples"
+                if not install_dir.exists():
+                    print(f"Error: Cannot find 'examples' directory at {install_dir}")
+                    return False
+                cmake_cmd = f"cd {install_dir} && cmake -S . -B build"
+                if not self.run_command_with_output(cmake_cmd, self.debug_output_enabled):
+                    print(f"CMake configuration failed")
+                    return False
+                
+                build_dir = install_dir / "build"
+                make_cmd = f"cd {build_dir} && make install"
+                success = self.run_command_with_output(make_cmd, self.debug_output_enabled)
+                
+                if success:
+                    print("utils installed successfully")
+                    return True
+                else:
+                    print(f"utils installation failed")
+                    return False
+            except Exception as e:
+                print(f"Error during utils installation: {e}")
                 return False
-            
-            build_dir = install_dir / "build"
-            make_cmd = f"cd {build_dir} && sudo make install"
-            #print(f"Running make install: {make_cmd}")
-            success = self.run_command_with_output(make_cmd, self.debug_output_enabled)
-            
-            if success:
-                print("utils installed successfully")
-                return True
-            else:
-                print(f"utils installation failed")
-                return False
-        except Exception as e:
-            print(f"Error during utils installation: {e}")
-            return False
     
     def install_luma_oled(self) -> bool:
         try:
@@ -612,14 +730,14 @@ class LibraryInstaller:
         
         selected_kit_code = None
         while True:
-            choice = input("Enter kit number (1-8): ").strip()
+            choice = input("Enter kit number (1-9): ").strip()
             if choice in kits:
                 selected_kit_code = kits[choice]['code']
                 selected_kit_name = kits[choice]['name']
                 print(f"Your selected kit is: {kits[choice]['code']} - {kits[choice]['name']}")
                 break
             else:
-                print("Invalid choice, please re-enter (1-8)")
+                print("Invalid choice, please re-enter (1-9)")
         
         # Specific kits require connector version selection
         connector_version = None
@@ -767,21 +885,12 @@ class LibraryInstaller:
             except Exception as e:
                 print(f"Error running command: {e}")
 
-            # try:
-            #     self.update_submodules([self.kit_name])
-            # except Exception as e:
-            #     print(f"Error running command: {e}")
-
-            # try:
-            #     self.run_command_with_output(f"cp -r codes/{self.kit_name} .")
-            # except Exception as e:
-            #     print(f"Error running command: {e}")
-
-            # Create virtual environment
-            try:
-                self.create_env(self.kit_code)
-            except Exception as e:
-                print(f"Error running command: {e}")
+            # Create virtual environment if needed
+            if self.use_virtual_env:
+                try:
+                    self.create_env(self.kit_code)
+                except Exception as e:
+                    print(f"Error running command: {e}")
 
             # Install required dependencies
             try:
@@ -911,8 +1020,30 @@ class LibraryInstaller:
             print("Unknown system platform")
 
 
+def main():
+    # 检查命令行参数
+    use_virtual_env = False  # 默认使用虚拟环境
+    
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg == "0":
+            use_virtual_env = False
+        elif arg == "1":
+            use_virtual_env = True
+        else:
+            print("Usage: python setup.py [0|1]")
+            print("  0: Install in system environment")
+            print("  1: Install in virtual environment (default)")
+            print("If no argument is provided, defaults to virtual environment")
+            return
+    
+    installer = LibraryInstaller(use_virtual_env=use_virtual_env)
+    if not use_virtual_env:
+        print("Installing in system environment...")
+    else:
+        print("Installing in virtual environment...")
+    installer.install_kit_environment()
+
 
 if __name__ == "__main__":
-    installer = LibraryInstaller()
-    installer.install_kit_environment()
-    
+    main()
