@@ -246,9 +246,8 @@ class LibraryInstaller:
             return False
 
         try:
-            # 获取系统pip路径而不是虚拟环境中的pip
             pip_path = self.get_pip_path()
-            cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout}"
+            cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout} --break-system-packages"
             
             fastest_mirror = self.get_fastest_mirror()
             cmd += f" -i {fastest_mirror}"
@@ -573,14 +572,14 @@ class LibraryInstaller:
         
         selected_kit_code = None
         while True:
-            choice = input("Enter kit number (1-8): ").strip()
+            choice = input("Enter kit number (1-9): ").strip()
             if choice in kits:
                 selected_kit_code = kits[choice]['code']
                 selected_kit_name = kits[choice]['name']
                 print(f"Your selected kit is: {kits[choice]['code']} - {kits[choice]['name']}")
                 break
             else:
-                print("Invalid choice, please re-enter (1-8)")
+                print("Invalid choice, please re-enter (1-9)")
         
         # Specific kits require connector version selection
         connector_version = None
