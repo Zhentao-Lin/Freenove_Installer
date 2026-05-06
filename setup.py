@@ -1,14 +1,45 @@
 import subprocess
+import sys
+import os
+
+def check_and_install_package(package_name):
+    try:
+        __import__(package_name.replace('-', '_').replace('.', '_'))
+        return True
+    except ImportError:
+        print(f"Package '{package_name}' not found. Installing...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+            print(f"Successfully installed {package_name}")
+            return True
+        except subprocess.CalledProcessError:
+            print(f"Failed to install {package_name}. Trying conda...")
+            try:
+                subprocess.check_call(["conda", "install", "-c", "anaconda", package_name, "-y"])
+                print(f"Successfully installed {package_name} via conda")
+                return True
+            except subprocess.CalledProcessError:
+                print(f"Failed to install {package_name} via conda as well.")
+                return False
+
+required_packages = ["requests"]
+
+for package in required_packages:
+    if not check_and_install_package(package):
+        print(f"Could not install required package: {package}")
+        sys.exit(1)
+
+import subprocess
 from pathlib import Path
-import requests
 import time
 import os
 from typing import Union
 import shutil 
 import sys
+import requests
 
 class LibraryInstaller:
-    def __init__(self, use_virtual_env=True):
+    def __init__(self, use_virtual_env=False):
         self.use_virtual_env = use_virtual_env
         self.env_path = None
         self.kit_code = None
@@ -860,11 +891,22 @@ class LibraryInstaller:
     def install_kit_environment(self):
         system_platform = self.detect_platform()
         if system_platform == 'windows':
-            pass
+            try:
+                self.install_requirements(requirements_file='requirements_window.txt')
+            except Exception as e:
+                print(f"Error running command: {e}")
         elif system_platform == 'linux':
-            pass
+            # Install required dependencies
+            try:
+                self.install_requirements(requirements_file='requirements_linux.txt')
+            except Exception as e:
+                print(f"Error running command: {e}")
         elif system_platform == 'macos':
-            pass
+            # Install required dependencies
+            try:
+                self.install_requirements(requirements_file='requirements_macos.txt')
+            except Exception as e:
+                print(f"Error running command: {e}")
         elif system_platform == 'raspberry_pi':
             print("Installing kit environment for Raspberry Pi...")
             # Prompt user input, get user input information and extract to self.config
