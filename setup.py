@@ -895,6 +895,12 @@ class LibraryInstaller:
                 self.install_requirements(requirements_file='requirements_client.txt')
             except Exception as e:
                 print(f"Error running command: {e}")
+            if system_platform == 'linux':
+                try:
+                    self.run_command_with_output(command='sudo apt install pyqt5*')
+                except Exception as e:
+                    print(f"Error running command: {e}")
+
         elif system_platform == 'raspberry_pi':
             print("Installing kit environment for Raspberry Pi...")
             # Prompt user input, get user input information and extract to self.config
