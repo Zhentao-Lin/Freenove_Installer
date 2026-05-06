@@ -296,7 +296,7 @@ class LibraryInstaller:
             print("Using global mirror based on speed test")
             return global_mirrors[global_times.index(fastest_global_time)]
 
-    def install_requirements(self, requirements_file: Union[str, Path] = "requirements.txt", timeout: int = 300) -> bool:
+    def install_requirements(self, requirements_file: Union[str, Path] = "requirements_server.txt", timeout: int = 300) -> bool:
         req_path = Path(requirements_file)
         if not req_path.exists():
             print(f"Requirements file '{requirements_file}' does not exist")
@@ -890,21 +890,9 @@ class LibraryInstaller:
 
     def install_kit_environment(self):
         system_platform = self.detect_platform()
-        if system_platform == 'windows':
+        if system_platform == 'windows' or system_platform == 'macos' or system_platform == 'linux':
             try:
-                self.install_requirements(requirements_file='requirements_window.txt')
-            except Exception as e:
-                print(f"Error running command: {e}")
-        elif system_platform == 'linux':
-            # Install required dependencies
-            try:
-                self.install_requirements(requirements_file='requirements_linux.txt')
-            except Exception as e:
-                print(f"Error running command: {e}")
-        elif system_platform == 'macos':
-            # Install required dependencies
-            try:
-                self.install_requirements(requirements_file='requirements_macos.txt')
+                self.install_requirements(requirements_file='requirements_client.txt')
             except Exception as e:
                 print(f"Error running command: {e}")
         elif system_platform == 'raspberry_pi':
@@ -936,7 +924,7 @@ class LibraryInstaller:
 
             # Install required dependencies
             try:
-                self.install_requirements()
+                self.install_requirements(requirements_file='requirements_server.txt')
             except Exception as e:
                 print(f"Error running command: {e}")
        
