@@ -232,8 +232,6 @@ class LibraryInstaller:
             return False
     
     def get_pip_path(self) -> str:
-        """获取系统pip路径"""
-        # 尝试不同的pip路径
         possible_paths = [
             "pip3",
             "pip",
@@ -304,7 +302,6 @@ class LibraryInstaller:
 
         try:
             if self.use_virtual_env:
-                # 在虚拟环境中安装
                 pip_path = self.env_path / "bin" / "pip"
                 
                 if not pip_path.exists():
@@ -313,7 +310,6 @@ class LibraryInstaller:
 
                 cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout}"
             else:
-                # 在系统环境中安装
                 pip_path = self.get_pip_path()
                 cmd = f"{pip_path} install -r {req_path} --timeout {timeout} --retries 3 --default-timeout {timeout} --break-system-packages"
             
@@ -339,7 +335,6 @@ class LibraryInstaller:
     
     def install_rpi_ws281x(self, target_folder_path: str = None) -> bool:
         if self.use_virtual_env:
-            # 在虚拟环境中安装
             venv_path = Path(target_folder_path) if target_folder_path else self.env_path
 
             try:
@@ -375,7 +370,6 @@ class LibraryInstaller:
                 print(f"Error during rpi-ws281x-python installation: {e}")
                 return False
         else:
-            # 在系统环境中安装
             try:
                 source_lib_dir = Path.cwd() / "libraries" / "rpi-ws281x-python"
                 
@@ -388,7 +382,7 @@ class LibraryInstaller:
                     print(f"Error: Library directory does not exist: {install_dir}")
                     return False
                     
-                python_executable = sys.executable  # 使用当前Python执行器
+                python_executable = sys.executable  
                 install_cmd = f"cd {install_dir} && {python_executable} setup.py install"
                 success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
                 
@@ -404,7 +398,6 @@ class LibraryInstaller:
     
     def install_mpu6050(self, target_folder_path: str = None) -> bool:
         if self.use_virtual_env:
-            # 在虚拟环境中安装
             venv_path = Path(target_folder_path) if target_folder_path else self.env_path
 
             try:
@@ -441,7 +434,6 @@ class LibraryInstaller:
                 print(f"Error during mpu6050 installation: {e}")
                 return False
         else:
-            # 在系统环境中安装
             try:
                 source_lib_dir = Path.cwd() / "libraries" / "mpu6050"
                 
@@ -454,7 +446,7 @@ class LibraryInstaller:
                     print(f"Error: Cannot find installation directory {install_dir}")
                     return False
                     
-                python_executable = sys.executable  # 使用当前Python执行器
+                python_executable = sys.executable
                 install_cmd = f"cd {install_dir} && {python_executable} setup.py install"
                 success = self.run_command_with_output(install_cmd, self.debug_output_enabled)
                 
@@ -494,7 +486,6 @@ class LibraryInstaller:
     
     def install_utils(self, target_folder_path: str = None) -> bool:
         if self.use_virtual_env:
-            # 在虚拟环境中安装
             venv_path = Path(target_folder_path) if target_folder_path else self.env_path
 
             try:
@@ -536,7 +527,6 @@ class LibraryInstaller:
                 print(f"Error during utils installation: {e}")
                 return False
         else:
-            # 在系统环境中安装
             try:
                 source_lib_dir = Path.cwd() / "libraries" / "utils"
                 
