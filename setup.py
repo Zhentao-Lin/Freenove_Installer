@@ -897,7 +897,7 @@ class LibraryInstaller:
                 print(f"Error running command: {e}")
             if system_platform == 'linux':
                 try:
-                    self.run_command_with_output(command='sudo apt install pyqt5*')
+                    self.run_command_with_output(cmd='sudo apt install pyqt5*')
                 except Exception as e:
                     print(f"Error running command: {e}")
 
